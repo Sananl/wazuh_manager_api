@@ -1,14 +1,13 @@
-package main
+package handler
 
 import (
 	"log"
-	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
-func main() {
+func InitRouter() *gin.Engine {
 	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
@@ -69,10 +68,5 @@ func main() {
 	r.POST("/agent/external-control/", handleExternalControl)
 
 	// r.GET("/password", generatePasswordAPI)
-	// Run Server ที่ Port 8080
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	r.Run(":" + port)
+	return r
 }

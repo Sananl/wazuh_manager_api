@@ -1,10 +1,16 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
+var router *gin.Engine
+
 func Handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello from Go on Vercel!")
+	if router == nil {
+		router = InitRouter()
+	}
+	router.ServeHTTP(w, r)
 }
