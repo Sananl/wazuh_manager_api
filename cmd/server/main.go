@@ -52,6 +52,9 @@ func InitRouter() *gin.Engine {
 	r.PUT("/users/:id", updateUser)    // แก้ไขข้อมูล User ตาม ID
 	r.DELETE("/users/:id", deleteUser) // ลบ User ตาม ID
 
+	// API สำหรับ Upload รูปภาพ (เก็บ Base64 ลงฐานข้อมูล)
+	r.POST("/upload/image", uploadUserImageHandler)
+
 	// API สำหรับ Logs
 	r.GET("/logs", getAllLogs) // ดึงข้อมูล logs_data ทั้งหมด
 	r.POST("/logs", createLog) // เพิ่ม Log ใหม่
