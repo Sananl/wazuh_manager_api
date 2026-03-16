@@ -1,5 +1,15 @@
 {
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/*.go",
+      "use": "@vercel/go"
+    }
+  ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/handler.go" }
+    {
+      "source": "/(.*)",
+      "destination": "/api/handler.go"
+    }
   ]
 }
