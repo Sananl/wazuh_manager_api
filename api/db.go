@@ -16,9 +16,13 @@ func connectDB() (*gorm.DB, error) {
 	dbHost := os.Getenv("DB_HOST")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/wazuh?charset=utf8mb4&parseTime=True&loc=Local", dbUser, dbPass, dbHost)
 
-	// เปิด Log Mode เพื่อดูคำสั่ง SQL ที่ทำงานจริง
+	logMode := logger.Silent
+	if isDebugEnabled() {
+		logMode = logger.Info
+	}
+
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logMode),
 	})
 	if err != nil {
 		return nil, err

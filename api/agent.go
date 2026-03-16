@@ -106,3 +106,85 @@ func createAgent(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"agent": agent})
 }
+
+func getAgentWithLogs(c *gin.Context) {
+	db, err := connectDB()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection failed: " + err.Error()})
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid agent ID"})
+		return
+	}
+
+	var agent Agent
+	if err := db.Table("agent").Where("agent_id = ?", id).First(&agent).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	var logs []LogData
+	if err := db.Table("logs_data").Where("agent_id = ?", id).Order("time DESC").Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occurred while fetching logs for agent"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"agent": agent,
+		"logs":  logs,
+	})
+}
+
+// ฟังก์ชันแก้ไขข้อมูล Agent (Update)
+func updateAgent(c *gin.Context) {
+	id := c.Param("id")
+	var input Agent
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	db, err := connectDB()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection failed"})
+		return
+	}
+
+	var agent Agent
+	// ตรวจสอบว่ามี Agent นี้หรือไม่
+	if err := db.Table("agent").Where("agent_id = ?", id).First(&agent).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// อัปเดตข้อมูล (ไม่ให้อัปเดต agent_id)
+	if err := db.Table("agent").Model(&agent).Omit("agent_id").Updates(input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update agent"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Agent updated successfully", "agent": agent})
+}
+
+// ฟังก์ชันดึงข้อมูล Agents ทั้งหมดของ User คนใดคนหนึ่ง (โดยใช้ user_id)
+func getAgentsByUserID(c *gin.Context) {
+	userID := c.Param("id")
+	db, err := connectDB()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection failed"})
+		return
+	}
+
+	var agents []Agent
+	// ค้นหา Agents ทั้งหมดที่มี user_id ตรงกับที่ส่งมา
+	if err := db.Table("agent").Where("user_id = ?", userID).Find(&agents).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occurred while fetching agents for user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"agents": agents})
+}

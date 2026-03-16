@@ -1,0 +1,19 @@
+# Binaries
+*.exe
+api/api.exe
+
+# Environment variables
+.env
+api/.env
+
+# Database files
+*.db
+api/test.db
+
+# Dependencies
+pkg/
+mod/
+vendor/
+
+# Other
+agent_poll.py

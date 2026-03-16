@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // LoginRequest struct สำหรับรับข้อมูล Login (Mixed)
@@ -42,8 +43,8 @@ func login(c *gin.Context) {
 	}
 
 	var user User
-	// สร้าง Query พื้นฐาน
-	query := db.Where("password = ?", loginReq.Password)
+	// สร้าง Query พื้นฐาน เพื่อหา User ก่อน (ยังไม่ตรวจสอบรหัสผ่านในขั้นตอนนี้)
+	query := db
 
 	// เพิ่มเงื่อนไขการค้นหาตาม input ที่ส่งมา
 	if loginReq.Email != "" && loginReq.FirstName != "" {
@@ -55,6 +56,12 @@ func login(c *gin.Context) {
 	}
 
 	if err := query.First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// ตรวจสอบรหัสผ่านที่ได้รับกับรหัสผ่านที่ Hash ไว้ในฐานข้อมูล
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
@@ -83,8 +90,14 @@ func loginByFirstName(c *gin.Context) {
 	}
 
 	var user User
-	// ค้นหา user จาก first_name และ password
-	if err := db.Where("first_name = ? AND password = ?", loginReq.FirstName, loginReq.Password).First(&user).Error; err != nil {
+	// ค้นหา user จาก first_name ก่อน
+	if err := db.Where("first_name = ?", loginReq.FirstName).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// ตรวจสอบรหัสผ่านที่ได้รับกับรหัสผ่านที่ Hash ไว้ในฐานข้อมูล
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}

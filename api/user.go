@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // User represents the user model in the database
@@ -13,9 +14,10 @@ type User struct {
 	Email     string `json:"email" gorm:"column:email"`
 	FirstName string `json:"first_name" gorm:"column:first_name"`
 	LastName  string `json:"last_name" gorm:"column:last_name"`
-	Type      int    `json:"type" gorm:"column:type"`
-	Image     string `json:"image" gorm:"column:image"`
-	Password  string `json:"password" gorm:"column:password"`
+	Type        int    `json:"type" gorm:"column:type"`
+	Image       string `json:"image" gorm:"column:image"`
+	Description string `json:"description" gorm:"column:description"`
+	Password    string `json:"password" gorm:"column:password"`
 }
 
 // ฟังก์ชันดึงข้อมูล User ทั้งหมด (Read)
@@ -34,6 +36,25 @@ func getAllUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"users": users})
+}
+
+// ฟังก์ชันดึงข้อมูล User ตาม ID (Read Profile)
+func getUserByID(c *gin.Context) {
+	id := c.Param("id")
+	db, err := connectDB()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection failed"})
+		return
+	}
+
+	var user User
+	// ค้นหา User ตาม ID (Primary Key)
+	if err := db.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
 // ฟังก์ชันเพิ่ม User ใหม่ (Create)
@@ -63,6 +84,14 @@ func createUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
 		return
 	}
+
+	// Hash the password using bcrypt
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not hash password"})
+		return
+	}
+	input.Password = string(hashedPassword)
 
 	// บันทึกข้อมูลลงฐานข้อมูล
 	if err := db.Create(&input).Error; err != nil {
@@ -96,6 +125,16 @@ func updateUser(c *gin.Context) {
 	if err := db.First(&user, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
+	}
+
+	// ถ้ามีการส่งรหัสผ่านมาใหม่ ให้ทำการ Hash ก่อนอัปเดต
+	if input.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not hash password"})
+			return
+		}
+		input.Password = string(hashedPassword)
 	}
 
 	// อัปเดตข้อมูล (ใช้ Updates เพื่ออัปเดตเฉพาะฟิลด์ที่ส่งมา และป้องกันการแก้ user_id)
