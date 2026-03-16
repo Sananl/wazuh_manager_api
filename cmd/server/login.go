@@ -1,10 +1,12 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // LoginRequest struct สำหรับรับข้อมูล Login (Mixed)
@@ -56,13 +58,20 @@ func login(c *gin.Context) {
 	}
 
 	if err := query.First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		if err == gorm.ErrRecordNotFound {
+			log.Printf("Login failed: User not found for input: %+v", loginReq)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials (user not found)"})
+		} else {
+			log.Printf("Login failed: Database error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		}
 		return
 	}
 
 	// ตรวจสอบรหัสผ่านที่ได้รับกับรหัสผ่านที่ Hash ไว้ในฐานข้อมูล
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		log.Printf("Login failed: Password mismatch for user: %s", user.Email)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials (password mismatch)"})
 		return
 	}
 
@@ -92,13 +101,20 @@ func loginByFirstName(c *gin.Context) {
 	var user User
 	// ค้นหา user จาก first_name ก่อน
 	if err := db.Where("first_name = ?", loginReq.FirstName).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		if err == gorm.ErrRecordNotFound {
+			log.Printf("LoginByFirstName failed: User not found for input: %+v", loginReq)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials (user not found)"})
+		} else {
+			log.Printf("LoginByFirstName failed: Database error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error: " + err.Error()})
+		}
 		return
 	}
 
 	// ตรวจสอบรหัสผ่านที่ได้รับกับรหัสผ่านที่ Hash ไว้ในฐานข้อมูล
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		log.Printf("LoginByFirstName failed: Password mismatch for user: %s", user.Email)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials (password mismatch)"})
 		return
 	}
 
