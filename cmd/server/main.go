@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 
@@ -26,9 +25,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 func InitRouter() *gin.Engine {
 	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment variables")
-	}
+	// สำหรับ Vercel พยายามโหลดจากหลายตำแหน่ง
+	godotenv.Load(".env")
+	godotenv.Load("cmd/server/.env")
 
 	r := gin.Default()
 	_ = r.SetTrustedProxies(nil)
