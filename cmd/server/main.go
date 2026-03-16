@@ -1,11 +1,28 @@
-package logic
+package main
 
 import (
 	"log"
+	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+func main() {
+	r := InitRouter()
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	r.Run(":" + port)
+}
+
+// Handler สำหรับ Vercel (ถ้าต้องการใช้ Serverless Function)
+func Handler(w http.ResponseWriter, r *http.Request) {
+	router := InitRouter()
+	router.ServeHTTP(w, r)
+}
 
 func InitRouter() *gin.Engine {
 	// Load environment variables from .env file
