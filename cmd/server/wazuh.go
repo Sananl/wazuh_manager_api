@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -263,24 +264,30 @@ func (e *AuthError) Error() string {
 
 // getWazuhToken ขอ Token จาก Wazuh API
 func getWazuhToken(config WazuhConfig) (string, error) {
+	log.Printf("DEBUG: Attempting to get Wazuh Token for URL: %s, User: %s", config.URL, config.User)
 	// ถ้ามี Token อยู่แล้วใน ENV ให้ใช้ทันที
 	if config.Token != "" {
+		log.Println("DEBUG: Using Token from Environment Variable")
 		return config.Token, nil
 	}
 
 	// ลอง Path ปกติก่อน
-	token, err := tryAuth(config, config.URL+"/security/user/authenticate")
+	authURL := config.URL + "/security/user/authenticate"
+	token, err := tryAuth(config, authURL)
 	if err == nil {
+		log.Println("DEBUG: Authentication successful at " + authURL)
 		return token, nil
 	}
-	debugf("DEBUG: Failed to auth at %s: %v\n", config.URL+"/security/user/authenticate", err)
+	log.Printf("DEBUG: Failed to auth at %s: %v\n", authURL, err)
 
 	// ถ้าไม่ผ่าน ลอง Path /api (สำหรับผ่าน Proxy/Nginx)
-	token, err = tryAuth(config, config.URL+"/api/security/user/authenticate")
+	apiAuthURL := config.URL + "/api/security/user/authenticate"
+	token, err = tryAuth(config, apiAuthURL)
 	if err == nil {
+		log.Println("DEBUG: Authentication successful at " + apiAuthURL)
 		return token, nil
 	}
-	debugf("DEBUG: Failed to auth at %s: %v\n", config.URL+"/api/security/user/authenticate", err)
+	log.Printf("DEBUG: Failed to auth at %s: %v\n", apiAuthURL, err)
 
 	return "", fmt.Errorf("failed to authenticate with Wazuh: %v", err)
 }
@@ -289,7 +296,7 @@ func tryAuth(config WazuhConfig, url string) (string, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	client := &http.Client{Transport: tr, Timeout: 10 * time.Second}
+	client := &http.Client{Transport: tr, Timeout: 15 * time.Second}
 
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -300,15 +307,19 @@ func tryAuth(config WazuhConfig, url string) (string, error) {
 	auth := base64.StdEncoding.EncodeToString([]byte(config.User + ":" + config.Password))
 	req.Header.Add("Authorization", "Basic "+auth)
 
+	log.Printf("DEBUG: Sending Auth Request to: %s", url)
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("DEBUG: Network error during auth: %v", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	log.Printf("DEBUG: Auth Response Status: %s", resp.Status)
 
 	if resp.StatusCode != 200 {
+		log.Printf("DEBUG: Auth failed. Body: %s", string(body))
 		return "", &AuthError{
 			StatusCode: resp.StatusCode,
 			Message:    fmt.Sprintf("failed to authenticate: %s", resp.Status),
@@ -326,7 +337,9 @@ func tryAuth(config WazuhConfig, url string) (string, error) {
 // getWazuhAgentsHandler ดึงข้อมูล Agent จาก Wazuh API และส่งกลับให้ Client
 func getWazuhAgentsHandler(c *gin.Context) {
 	config := getWazuhConfig()
+	log.Printf("DEBUG: getWazuhAgentsHandler called. URL: %s, User: %s", config.URL, config.User)
 	if config.URL == "" || config.User == "" || config.Password == "" {
+		log.Println("DEBUG: Wazuh configuration missing")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Wazuh configuration missing in .env"})
 		return
 	}
