@@ -33,6 +33,14 @@ func InitRouter() *gin.Engine {
 	r := gin.Default()
 	_ = r.SetTrustedProxies(nil)
 
+	// Route พื้นฐานสำหรับทดสอบ
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "online",
+			"message": "Wazuh API Server on Vercel is running",
+		})
+	})
+
 	// เรียกใช้ฟังก์ชัน login จากไฟล์ login.go
 	r.POST("/login", login)
 	// API สำหรับ Login ด้วย First Name เท่านั้น
