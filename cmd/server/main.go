@@ -62,6 +62,7 @@ func InitRouter() *gin.Engine {
 	// API สำหรับ Agents
 	r.GET("/agents", getAllAgents)                // ดึงข้อมูล agent ทั้งหมด
 	r.POST("/agents", createAgent)                // เพิ่ม agent ใหม่
+	r.POST("/agents/connect", connectAgentFromMobile) // Connect จากมือถือ (Update info & Enqueue Start)
 	r.GET("/agents/:id", getAgentWithLogs)        // ดึงข้อมูล agent ตาม ID พร้อม logs ทั้งหมด
 	r.PUT("/agents/:id", updateAgent)             // แก้ไขข้อมูล agent ตาม ID
 	r.GET("/users/:id/agents", getAgentsByUserID) // ดึงข้อมูล agents ทั้งหมดตาม user_id เจ้าของ
