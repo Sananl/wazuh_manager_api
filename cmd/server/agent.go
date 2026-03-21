@@ -235,12 +235,6 @@ func connectAgentFromMobile(c *gin.Context) {
 		return
 	}
 
-	// AutoMigrate เพื่อให้แน่ใจว่าตาราง wazuh_agent มีคอลัมน์ใหม่
-	if err := db.AutoMigrate(&WazuhAgent{}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database migration failed"})
-		return
-	}
-
 	// ค้นหาว่ามี Agent นี้อยู่แล้วหรือไม่ (ตาม wazuh_id)
 	var agent WazuhAgent
 	if err := db.Table("wazuh_agent").Where("wazuh_id = ?", input.WazuhID).First(&agent).Error; err != nil {
